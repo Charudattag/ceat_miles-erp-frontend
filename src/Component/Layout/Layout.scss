@@ -1,0 +1,65 @@
+/* src/styles/Dashboard.scss */
+@import "../../styles/common.scss";
+
+.dashboard {
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-body {
+  display: flex;
+}
+
+.main-content {
+  flex-grow: 1;
+  background-color: $primary-color;
+  padding: 20px;
+  border-radius: $border-radius-base;
+  box-shadow: $box-shadow-base;
+}
+
+.section-title {
+  font-family: $font-family-title;
+  font-size: $font-size-title;
+  font-weight: $font-weight-semi-bold;
+  color: $text-color-base;
+  margin-top: 20px;
+  width: 100%;
+  font-size: 20px;
+  background-color: $primary-color2;
+  color: white;
+
+  text-align: center;
+  padding: 20px;
+  border-radius: 15px;
+}
+
+.form {
+  background-color: #fff;
+  padding: $card-padding;
+  border-radius: $border-radius-base;
+  box-shadow: $box-shadow-light;
+}
+
+.form-label {
+  font-size: $font-size-label;
+  font-weight: $font-weight-semi-bold;
+}
+
+.form-control {
+  padding: $input-padding;
+  font-size: $font-size-base;
+}
+
+button[type="submit"] {
+  background-color: $primary-color;
+  padding: $button-padding;
+  font-size: $font-size-base;
+  border: none;
+  border-radius: $border-radius-base;
+  transition: background-color 0.3s ease;
+
+  &:hover {
+    background-color: ($primary-color, 10%);
+  }
+}

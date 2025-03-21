@@ -1,0 +1,38 @@
+/* src/styles/constants.scss */
+
+/* Colors */
+$primary-color: rgb(75, 110, 255); /* Blue */
+$primary-color2: rgba(75, 110, 255, 0.9); /* Blue */
+$secondary-color: #2ecc71; /* Green */
+$background-color: #f0f4f8; /* Light Grey Background */
+$text-color-base: #333; /* Base text color */
+$text-color-light: #fff; /* Light text color */
+$icon-color-base: #000; /* Base icon color */
+
+/* Font settings */
+$font-family-base: "Roboto", Arial, sans-serif; /* Professional font family for body */
+$font-family-title: "Poppins", sans-serif; /* Use for headings or titles */
+
+/* Font sizes */
+$font-size-base: 14px; /* Smaller base font size */
+$font-size-title: 16px; /* Slightly reduced title font size */
+$font-size-label: 12px; /* Small font size for labels */
+$font-size-small: 11px; /* For smaller elements or footers */
+
+/* Font weights */
+$font-weight-normal: 400; /* Regular font weight */
+$font-weight-semi-bold: 500; /* Slightly bold */
+$font-weight-bold: 600; /* Bold */
+
+/* Spacing */
+$card-padding: 15px; /* Reduced padding for cards */
+$input-padding: 8px; /* Smaller input padding */
+$button-padding: 10px; /* Reduced button padding */
+$border-radius-base: 5px; /* Default border radius */
+
+/* Shadows */
+$box-shadow-base: 0 4px 10px rgba(0, 0, 0, 0.1); /* Slightly reduced shadow */
+$box-shadow-light: 0 2px 5px rgba(0, 0, 0, 0.05); /* Light shadow for buttons or inputs */
+
+/* Misc */
+$sidebar-width: 240px; /* Default sidebar width */

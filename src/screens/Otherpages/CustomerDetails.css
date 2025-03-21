@@ -1,0 +1,31 @@
+.dealer-summary {
+    padding: 20px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+  
+  .dealer-summary h4 {
+    margin-bottom: 20px;
+    color: #333;
+  }
+  
+  .dealer-summary .row {
+    margin-bottom: 15px;
+  }
+  
+  .dealer-summary p {
+    margin-bottom: 10px;
+  }
+  
+  .points-history {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+  }
+  
+  .points-history h5 {
+    margin-bottom: 20px;
+    color: #333;
+  }
+  

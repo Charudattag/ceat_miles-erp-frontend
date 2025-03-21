@@ -1,0 +1,38 @@
+/* src/styles/Header.scss */
+@import "../../styles/common.scss";
+
+.header {
+  width: 100%;
+  background-color: #ffffff;
+  border-bottom: 1px solid #ddd;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 20px;
+  height: 70px; /* Fix header height */
+}
+
+.logo-section {
+  display: flex;
+  align-items: center;
+}
+
+.logo {
+  width: 45px; /* Slightly smaller logo size */
+  margin-right: 15px;
+}
+
+.company-name {
+  font-family: $font-family-title; /* Use Poppins for company name */
+  font-size: 18px; /* Slightly smaller title */
+  font-weight: 500; /* Less bold */
+  color: #333;
+}
+
+.user-section .icon-bell,
+.user-section .icon-user {
+  font-size: 20px; /* Smaller icon size */
+  color: black;
+  cursor: pointer;
+  margin-right: 20px;
+}

@@ -1,0 +1,44 @@
+/* src/styles/Login.scss */
+@import "../../styles/constants.scss";
+
+.login-container {
+  background-color: $background-color;
+  font-family: $font-family-base;
+}
+
+.login-card {
+  width: 400px;
+  box-shadow: $box-shadow-base;
+  border-radius: $border-radius-base;
+  background-color: #fff;
+  padding: $card-padding;
+}
+
+.logo {
+  width: 100px;
+}
+
+.login-title {
+  font-family: $font-family-title;
+  font-size: $font-size-title;
+  font-weight: 600;
+  color: #333;
+}
+
+.form-group label {
+  font-size: $font-size-label;
+  font-weight: 500;
+}
+
+.form-control {
+  font-size: $font-size-base;
+  padding: $input-padding;
+  border-radius: $border-radius-base;
+}
+
+.btn-primary {
+  background-color: $primary-color;
+  padding: $button-padding;
+  font-size: $font-size-base;
+  border-radius: $border-radius-base;
+}
