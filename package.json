@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@react-pdf/renderer": "^4.3.0",
     "@tanstack/react-query": "^5.62.14",
     "antd": "^5.23.3",
     "axios": "^1.7.9",
@@ -18,8 +19,10 @@
     "install": "^0.13.0",
     "jquery": "^3.7.1",
     "jspdf": "^2.5.2",
+    "jspdf-autotable": "^5.0.2",
     "jwt-decode": "^4.0.0",
     "npm": "^10.8.3",
+    "pdf-lib": "^1.17.1",
     "query": "^0.2.0",
     "quill": "^2.0.2",
     "react": "^18.3.1",

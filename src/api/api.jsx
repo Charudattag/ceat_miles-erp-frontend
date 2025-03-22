@@ -156,16 +156,16 @@ export const getProductByIdAPI = (id) =>
 
 // all category API
 export const addCategoryAPI = (userData) =>
-  apiRequest(`/category/addCategory`, userData, "post");
+  apiRequest(`/category/createCategory`, userData, "post");
 
 export const updateCategoryAPI = ({ id, formData }) =>
   apiRequest(`/category/updateCategory/${id}`, formData, "post");
 
 export const deleteCategoryAPI = (id) =>
-  apiRequest(`/category/delete/${id}`, null, "post");
+  apiRequest(`/category/deleteCategory/${id}`, null, "post");
 
 export const getAllcategoriesAPI = (payload) =>
-  apiRequest("/category/getAllCategory", payload, "get");
+  apiRequest("/category/getAllCategories", payload, "get");
 
 // po order apis
 

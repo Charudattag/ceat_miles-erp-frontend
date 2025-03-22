@@ -4,189 +4,211 @@ import { FaSearch, FaPlus, FaEdit, FaTrash } from "react-icons/fa";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import {
-  addMediaAPI,
-  getAllMediaAPI,
-  deleteMediaAPI,
-  IMG_URL,
-  getAllproductsAPI,
+  addCategoryAPI,
+  getAllcategoriesAPI,
+  updateCategoryAPI,
+  deleteCategoryAPI,
 } from "../../../src/api/api";
 
 const Category = () => {
   const [showModal, setShowModal] = useState(false);
-  const [mediaType, setMediaType] = useState("image");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [mediaList, setMediaList] = useState([]);
-  const [productList, setProductList] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [newMedia, setNewMedia] = useState({
-    product_id: "",
-    media_file: null,
+  const [isEditing, setIsEditing] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [formData, setFormData] = useState({
+    category_name: "",
+    is_active: true,
   });
 
-  const fetchMedia = useCallback(async () => {
+  const fetchCategories = useCallback(async () => {
     try {
-      const response = await getAllMediaAPI(currentPage);
-      if (response?.data?.media) {
-        setMediaList(response.data.media);
+      const payload = {
+        page: currentPage,
+        limit: 10,
+        search: searchQuery,
+      };
+
+      const response = await getAllcategoriesAPI(payload);
+      if (response?.success && response?.data?.categories) {
+        setCategories(response.data.categories);
         setTotalPages(response.data.pagination.totalPages);
+      } else {
+        toast.error(response?.message || "Failed to fetch categories");
       }
     } catch (error) {
-      toast.error("Error fetching media");
+      toast.error("Error fetching categories");
     }
-  }, [currentPage]);
+  }, [currentPage, searchQuery]);
 
   useEffect(() => {
-    fetchMedia();
-  }, [fetchMedia]);
-
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const response = await getAllproductsAPI();
-        if (response.success && response.data.products) {
-          setProductList(response.data.products);
-        } else {
-          toast.error("Failed to fetch products.");
-        }
-      } catch (error) {
-        toast.error("Error fetching products.");
-      }
-    };
-    fetchProducts();
-  }, []);
+    fetchCategories();
+  }, [fetchCategories]);
 
   const handleCloseModal = () => {
     setShowModal(false);
-    setNewMedia({ product_id: "", media_file: null });
+    setIsEditing(false);
+    setSelectedCategory(null);
+    setFormData({
+      category_name: "",
+      is_active: true,
+    });
   };
 
-  const handleFileChange = (e) => {
-    setNewMedia({ ...newMedia, media_file: e.target.files[0] });
+  const handleInputChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData({
+      ...formData,
+      [name]: type === "checkbox" ? checked : value,
+    });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!newMedia.product_id || !newMedia.media_file) {
-      toast.error("Please fill all required fields!");
+
+    if (!formData.category_name.trim()) {
+      toast.error("Category name is required!");
       return;
     }
-    try {
-      const formData = new FormData();
-      formData.append("product_id", newMedia.product_id);
 
-      // Append file to the correct field based on media type
-      if (mediaType === "image") {
-        formData.append("images", newMedia.media_file);
-      } else if (mediaType === "video") {
-        formData.append("videos", newMedia.media_file);
-      } else if (mediaType === "pdf") {
-        formData.append("pdf", newMedia.media_file);
+    try {
+      let response;
+
+      if (isEditing && selectedCategory) {
+        response = await updateCategoryAPI({
+          id: selectedCategory.id,
+          formData: formData,
+        });
+      } else {
+        response = await addCategoryAPI(formData);
       }
 
-      const response = await addMediaAPI(formData);
       if (response.success) {
-        toast.success("Media uploaded successfully!");
-        fetchMedia();
+        toast.success(
+          isEditing
+            ? "Category updated successfully!"
+            : "Category added successfully!"
+        );
+        fetchCategories();
         handleCloseModal();
       } else {
-        toast.error(response.message || "Error uploading media");
+        toast.error(response.message || "Operation failed");
       }
     } catch (error) {
-      toast.error("Failed to upload media");
+      toast.error(
+        isEditing ? "Failed to update category" : "Failed to add category"
+      );
     }
   };
 
-  const handleDeleteMedia = async (mediaId) => {
-    try {
-      const response = await deleteMediaAPI(mediaId);
-      if (response.success) {
-        toast.success("Media deleted successfully");
-        fetchMedia();
-      } else {
-        toast.error(response.message || "Failed to delete media");
+  const handleEditCategory = (category) => {
+    setIsEditing(true);
+    setSelectedCategory(category);
+    setFormData({
+      category_name: category.category_name,
+      is_active: category.is_active,
+    });
+    setShowModal(true);
+  };
+
+  const handleDeleteCategory = async (categoryId) => {
+    if (window.confirm("Are you sure you want to delete this category?")) {
+      try {
+        const response = await deleteCategoryAPI(categoryId);
+        if (response.success) {
+          toast.success("Category deleted successfully");
+          fetchCategories();
+        } else {
+          toast.error(response.message || "Failed to delete category");
+        }
+      } catch (error) {
+        toast.error("Error deleting category");
       }
-    } catch (error) {
-      toast.error("Error deleting media");
     }
   };
 
-  // Filter media list based on search query
-  const filteredMediaList = mediaList.filter((media) =>
-    media.product_id.toString().includes(searchQuery)
-  );
+  const handleSearch = (e) => {
+    setSearchQuery(e.target.value);
+    setCurrentPage(1); // Reset to first page when searching
+  };
 
   return (
-    <div className="container bg-white">
-      <h2 className="my-4">Media Management</h2>
+    <div className="container bg-white p-4 rounded shadow">
+      <h2 className="my-4">Category Management</h2>
 
       <div className="d-flex justify-content-between mb-3">
-        <Form.Control
-          type="text"
-          placeholder="Search by Product ID"
-          className="w-50"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
+        <div className="d-flex">
+          <div className="input-group" style={{ width: "300px" }}>
+            <span className="input-group-text">
+              <FaSearch />
+            </span>
+            <Form.Control
+              type="text"
+              placeholder="Search categories..."
+              value={searchQuery}
+              onChange={handleSearch}
+            />
+          </div>
+        </div>
         <Button variant="primary" onClick={() => setShowModal(true)}>
-          <FaPlus /> Add Media
+          <FaPlus className="me-2" /> Add Category
         </Button>
       </div>
 
-      <Table bordered hover>
-        <thead>
+      <Table bordered hover responsive>
+        <thead className="bg-light">
           <tr>
             <th>#</th>
-            <th>Product ID</th>
-            <th>Media Type</th>
-            <th>Preview</th>
+            <th>Category Name</th>
+            <th>Status</th>
+            <th>Created At</th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody>
-          {filteredMediaList.map((media, index) => (
-            <tr key={media.id || index}>
-              <td>{index + 1}</td>
-              <td>{media.product_id}</td>
-              <td>{media.type}</td>
-              <td>
-                {media.type === "IMAGE" ? (
-                  <img
-                    src={`${IMG_URL}/uploads/${media.name}`}
-                    alt={media.name}
-                    style={{
-                      width: "50px",
-                      height: "50px",
-                      objectFit: "cover",
-                    }}
-                  />
-                ) : media.type === "VIDEO" ? (
-                  <video width="50" height="50" controls>
-                    <source
-                      src={`${IMG_URL}/uploads/${media.name}`}
-                      type="video/mp4"
-                    />
-                  </video>
-                ) : (
-                  <a
-                    href={`${IMG_URL}/uploads/${media.name}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
+          {categories.length > 0 ? (
+            categories.map((category, index) => (
+              <tr key={category.id || index}>
+                <td>{index + 1}</td>
+                <td>{category.category_name}</td>
+                <td>
+                  <span
+                    className={`badge ${
+                      category.is_active ? "bg-success" : "bg-danger"
+                    }`}
                   >
-                    View PDF
-                  </a>
-                )}
-              </td>
-              <td>
-                <Button
-                  variant="danger"
-                  onClick={() => handleDeleteMedia(media.id)}
-                >
-                  <FaTrash />
-                </Button>
+                    {category.is_active ? "Active" : "Inactive"}
+                  </span>
+                </td>
+                <td>{new Date(category.createdAt).toLocaleDateString()}</td>
+                <td>
+                  <Button
+                    variant="info"
+                    size="sm"
+                    className="me-2"
+                    onClick={() => handleEditCategory(category)}
+                  >
+                    <FaEdit />
+                  </Button>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    onClick={() => handleDeleteCategory(category.id)}
+                  >
+                    <FaTrash />
+                  </Button>
+                </td>
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td colSpan="5" className="text-center py-3">
+                No categories found
               </td>
             </tr>
-          ))}
+          )}
         </tbody>
       </Table>
 
@@ -216,67 +238,53 @@ const Category = () => {
 
       <Modal show={showModal} onHide={handleCloseModal} centered>
         <Modal.Header closeButton>
-          <Modal.Title>Add Media</Modal.Title>
+          <Modal.Title>
+            {isEditing ? "Edit Category" : "Add New Category"}
+          </Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Form onSubmit={handleSubmit}>
             <Form.Group className="mb-3">
-              <Form.Label>Product ID</Form.Label>
-              <Form.Select
-                name="product_id"
-                value={newMedia.product_id}
-                onChange={(e) =>
-                  setNewMedia({ ...newMedia, product_id: e.target.value })
-                }
-                required
-              >
-                <option value="">Select Product</option>
-                {productList.map((product) => (
-                  <option key={product.id} value={product.id}>
-                    {product.product_name}
-                  </option>
-                ))}
-              </Form.Select>
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Media Type</Form.Label>
-              <Form.Select
-                value={mediaType}
-                onChange={(e) => setMediaType(e.target.value)}
-                required
-              >
-                <option value="image">Image</option>
-                <option value="video">Video</option>
-                <option value="pdf">PDF</option>
-              </Form.Select>
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Upload File</Form.Label>
+              <Form.Label>Category Name</Form.Label>
               <Form.Control
-                type="file"
-                accept={
-                  mediaType === "image"
-                    ? "image/*"
-                    : mediaType === "video"
-                    ? "video/*"
-                    : "application/pdf"
-                }
-                onChange={handleFileChange}
+                type="text"
+                name="category_name"
+                value={formData.category_name}
+                onChange={handleInputChange}
+                placeholder="Enter category name"
                 required
               />
             </Form.Group>
+
+            {isEditing && (
+              <Form.Group className="mb-3">
+                <Form.Check
+                  type="checkbox"
+                  name="is_active"
+                  label="Active"
+                  checked={formData.is_active}
+                  onChange={handleInputChange}
+                />
+              </Form.Group>
+            )}
+
             <div className="d-flex justify-content-end">
-              <Button variant="secondary" onClick={handleCloseModal}>
+              <Button
+                variant="secondary"
+                onClick={handleCloseModal}
+                className="me-2"
+              >
                 Cancel
               </Button>
-              <Button type="submit" variant="primary" className="ms-2">
-                Save
+              <Button type="submit" variant="primary">
+                {isEditing ? "Update" : "Save"}
               </Button>
             </div>
           </Form>
         </Modal.Body>
       </Modal>
-      <ToastContainer />
+
+      <ToastContainer position="top-right" autoClose={3000} />
     </div>
   );
 };

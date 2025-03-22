@@ -4,7 +4,8 @@ import { FaSearch, FaPlus, FaEdit, FaTrash } from "react-icons/fa";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useNavigate } from "react-router-dom";
-import { FaCopy, FaShare, FaLink, FaFlag } from "react-icons/fa";
+import { FaCopy, FaShare, FaLink, FaFlag, FaFilePdf } from "react-icons/fa";
+import ExportProductsPDF from "../../screens/Otherpages/ExportProductsPDF";
 
 import {
   addProductAPI,
@@ -14,6 +15,7 @@ import {
   getAllVendorsAPI,
   addsharedcollectionAPI,
   getAllMediaAPI,
+  getAllcategoriesAPI,
   IMG_URL,
 } from "../../../src/api/api";
 
@@ -26,6 +28,7 @@ const AddProductForm = () => {
   const [totalItems, setTotalItems] = useState(0);
   const [products, setProducts] = useState([]);
   const [vendors, setVendors] = useState([]);
+  const [categories, setCategories] = useState([]); // Added categories state
   const [searchQuery, setSearchQuery] = useState("");
   const [editMode, setEditMode] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState(null);
@@ -44,6 +47,8 @@ const AddProductForm = () => {
   const [productsWithImages, setProductsWithImages] = useState({});
   const [allMedia, setAllMedia] = useState([]);
   const [mediaLoading, setMediaLoading] = useState(false);
+  const [showPdfModal, setShowPdfModal] = useState(false);
+  const [productsToExport, setProductsToExport] = useState([]);
   const [newProduct, setNewProduct] = useState({
     product_name: "",
     description: "",
@@ -52,6 +57,8 @@ const AddProductForm = () => {
     minimum_order_quantity: "",
     available_stock: "",
     vendor_id: "",
+    category_id: "", // Added category_id field
+    tags: "",
   });
 
   // pegination functions
@@ -63,6 +70,32 @@ const AddProductForm = () => {
   const endIndex = startIndex + itemsPerPage;
 
   const paginatedProducts = filteredProducts.slice(startIndex, endIndex);
+
+  const handleExportToPdf = () => {
+    if (selectedProducts.length === 0) {
+      toast.error("Please select at least one product to export");
+      return;
+    }
+
+    // Filter the products to get only the selected ones
+    const selectedProductsData = products.filter((product) =>
+      selectedProducts.includes(product.id)
+    );
+
+    setProductsToExport(selectedProductsData);
+    setShowPdfModal(true);
+  };
+
+  const handleClosePdfModal = () => {
+    setShowPdfModal(false);
+    setProductsToExport([]);
+  };
+
+  // Add this function to handle exporting a single product
+  const handleExportSingleProduct = (product) => {
+    setProductsToExport([product]);
+    setShowPdfModal(true);
+  };
 
   const fetchProducts = useCallback(
     async (page = 1) => {
@@ -101,13 +134,31 @@ const AddProductForm = () => {
     }
   }, []);
 
+  const fetchCategories = useCallback(async () => {
+    try {
+      const response = await getAllcategoriesAPI({
+        page: 1,
+        limit: 100, // Get all categories
+      });
+
+      if (response?.success && response?.data?.categories) {
+        setCategories(response.data.categories);
+      } else {
+        console.error("Failed to fetch categories:", response?.message);
+      }
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+    }
+  }, []);
+
   useEffect(() => {
     fetchProducts(currentPage);
   }, [currentPage, fetchProducts]);
 
   useEffect(() => {
     fetchVendors();
-  }, [fetchVendors]);
+    fetchCategories();
+  }, [fetchVendors, fetchCategories]);
 
   const fetchAllMedia = async () => {
     try {
@@ -175,6 +226,8 @@ const AddProductForm = () => {
       minimum_order_quantity: "",
       available_stock: "",
       vendor_id: "",
+      category_id: "",
+      tags: "",
     });
     setSelectedProductId(null);
   };
@@ -190,7 +243,17 @@ const AddProductForm = () => {
     }
 
     try {
-      const response = await addProductAPI(newProduct);
+      // Process the tags before sending to API
+      const processedData = {
+        ...newProduct,
+        tags: newProduct.tags
+          ? newProduct.tags.split(",").map((tag) => tag.trim())
+          : [],
+      };
+
+      // Use processedData instead of newProduct
+      const response = await addProductAPI(processedData);
+
       if (response.success) {
         toast.success("Product added successfully");
         fetchProducts(currentPage);
@@ -211,6 +274,7 @@ const AddProductForm = () => {
       gst_percentage,
       minimum_order_quantity,
       available_stock,
+      category_id,
     } = newProduct;
 
     if (
@@ -219,7 +283,8 @@ const AddProductForm = () => {
       !price ||
       !gst_percentage ||
       !minimum_order_quantity ||
-      !available_stock
+      !available_stock ||
+      !category_id
     ) {
       toast.error("All fields are required");
       return false;
@@ -249,6 +314,7 @@ const AddProductForm = () => {
       minimum_order_quantity: product.minimum_order_quantity,
       available_stock: product.available_stock,
       vendor_id: product.vendor_id,
+      category_id: product.category_id || "",
     });
     handleShowModal();
   };
@@ -259,9 +325,18 @@ const AddProductForm = () => {
     }
 
     try {
+      // Process the tags before sending to API
+      const processedData = {
+        ...newProduct,
+        tags: newProduct.tags
+          ? newProduct.tags.split(",").map((tag) => tag.trim())
+          : [],
+      };
+
+      // Use processedData in the API call
       const response = await updateProductAPI({
         id: selectedProductId,
-        formData: newProduct,
+        formData: processedData,
       });
 
       if (response.success) {
@@ -475,14 +550,25 @@ const AddProductForm = () => {
           {selectMode ? "Cancel Selection" : "Select Products"}
         </Button>
         {selectMode && (
-          <Button
-            variant="info"
-            onClick={handleShareMultipleProducts}
-            disabled={selectedProducts.length === 0 || isSharing}
-            className="me-2"
-          >
-            <FaLink /> Share Selected ({selectedProducts.length})
-          </Button>
+          <>
+            <Button
+              variant="info"
+              onClick={handleShareMultipleProducts}
+              disabled={selectedProducts.length === 0 || isSharing}
+              className="me-2"
+            >
+              <FaLink /> Share Selected ({selectedProducts.length})
+            </Button>
+
+            <Button
+              variant="danger"
+              onClick={handleExportToPdf}
+              disabled={selectedProducts.length === 0}
+              className="me-2"
+            >
+              <FaFilePdf /> Export to PDF ({selectedProducts.length})
+            </Button>
+          </>
         )}
         <Button variant="primary" onClick={handleShowModal}>
           <FaPlus /> Add Product
@@ -495,6 +581,8 @@ const AddProductForm = () => {
             <th>Sr No.</th>
             <th>Product Name</th>
             <th>Description</th>
+            <th>Tag</th>
+            <th>Category</th>
             <th>Price</th>
             <th>GST %</th>
             <th>Min. Order Qty</th>
@@ -542,6 +630,22 @@ const AddProductForm = () => {
                 >
                   {product.description}
                 </td>
+                <td>
+                  {product.tags &&
+                  Array.isArray(product.tags) &&
+                  product.tags.length > 0 ? (
+                    product.tags.map((tag, idx) => (
+                      <span key={idx} className="badge bg-info me-1 mb-1">
+                        {tag}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="badge bg-secondary">No tags</span>
+                  )}
+                </td>
+
+                <td>{product.category?.category_name || "No Category"}</td>
+
                 <td>{product.price}</td>
                 <td>{product.gst_percentage}%</td>
                 <td>{product.minimum_order_quantity}</td>
@@ -566,7 +670,7 @@ const AddProductForm = () => {
                   )}
                 </td>
 
-                <td>{product.vendor_name}</td>
+                <td>{product.vendor?.name || "No vendor"}</td>
                 <td>
                   <Button
                     variant="warning"
@@ -635,6 +739,24 @@ const AddProductForm = () => {
                 onChange={handleInputChange}
                 required
               />
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>
+                Category <span className="text-danger">*</span>
+              </Form.Label>
+              <Form.Select
+                name="category_id"
+                value={newProduct.category_id}
+                onChange={handleInputChange}
+                required
+              >
+                <option value="">Select Category</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.category_name}
+                  </option>
+                ))}
+              </Form.Select>
             </Form.Group>
 
             <Form.Group className="mb-3">
@@ -715,6 +837,21 @@ const AddProductForm = () => {
                 ))}
               </Form.Select>
             </Form.Group>
+            {/* Add this after the Vendor Form.Group */}
+            <Form.Group className="mb-3">
+              <Form.Label>Tags</Form.Label>
+              <Form.Control
+                type="text"
+                placeholder="Enter tags (comma separated)"
+                name="tags"
+                value={newProduct.tags || ""}
+                onChange={handleInputChange}
+              />
+              <Form.Text className="text-muted">
+                Enter tags separated by commas (e.g., premium, office,
+                electronics)
+              </Form.Text>
+            </Form.Group>
 
             <div className="d-flex justify-content-end">
               <Button
@@ -794,6 +931,25 @@ const AddProductForm = () => {
             Close
           </Button>
         </Modal.Footer>
+      </Modal>
+      {/* Add this new modal for PDF export */}
+      <Modal
+        show={showPdfModal}
+        onHide={handleClosePdfModal}
+        centered
+        size="lg"
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>Export Products to PDF</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <ExportProductsPDF
+            products={productsToExport}
+            vendors={vendors}
+            categories={categories}
+            onClose={handleClosePdfModal}
+          />
+        </Modal.Body>
       </Modal>
       <div className="d-flex justify-content-between align-items-center mt-3 mb-4">
         <div className="text-muted">

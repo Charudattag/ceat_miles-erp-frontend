@@ -101,11 +101,11 @@ const Sidebar = () => {
           //   path: "/dealers",
           //   icon: FaUsers,
           // },
-          // {
-          //   label: "ProductImage",
-          //   path: "/category",
-          //   icon: TbCategoryPlus,
-          // },
+          {
+            label: "Category",
+            path: "/category",
+            icon: TbCategoryPlus,
+          },
           {
             label: "BulkProductImport",
             path: "/bulkProductImport",
