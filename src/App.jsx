@@ -154,7 +154,7 @@ function App() {
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="product" element={<Product />} />
 
-            <Route path="dealers" element={<Customer />} />
+            <Route path="customer" element={<Customer />} />
             <Route path="productDetails/:id" element={<ProductDetails />} />
             <Route path="orders" element={<Orders />} />
             <Route path="category" element={<Category />} />

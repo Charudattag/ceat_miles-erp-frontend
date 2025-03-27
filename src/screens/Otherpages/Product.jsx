@@ -4,8 +4,13 @@ import { FaSearch, FaPlus, FaEdit, FaTrash } from "react-icons/fa";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useNavigate } from "react-router-dom";
+import Select from "react-select";
 import { FaCopy, FaShare, FaLink, FaFlag, FaFilePdf } from "react-icons/fa";
 import ExportProductsPDF from "../../screens/Otherpages/ExportProductsPDF";
+import ProductFilter from "../../screens/Otherpages/ProductFilter";
+import "./Products.css";
+
+import { Spinner } from "react-bootstrap";
 
 import {
   addProductAPI,
@@ -16,6 +21,8 @@ import {
   addsharedcollectionAPI,
   getAllMediaAPI,
   getAllcategoriesAPI,
+  getAllcustomerAPI,
+  sendEmailToCustomersAPI,
   IMG_URL,
 } from "../../../src/api/api";
 
@@ -28,7 +35,7 @@ const AddProductForm = () => {
   const [totalItems, setTotalItems] = useState(0);
   const [products, setProducts] = useState([]);
   const [vendors, setVendors] = useState([]);
-  const [categories, setCategories] = useState([]); // Added categories state
+  const [categories, setCategories] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [editMode, setEditMode] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState(null);
@@ -37,7 +44,7 @@ const AddProductForm = () => {
   const [shareLink, setShareLink] = useState("");
   const [showShareLinkModal, setShowShareLinkModal] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState([]);
-  const [selectMode, setSelectMode] = useState(false);
+  const [selectMode, setSelectMode] = useState(true);
   const [sharedCollectionId, setSharedCollectionId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [itemsPerPage] = useState(10);
@@ -49,6 +56,18 @@ const AddProductForm = () => {
   const [mediaLoading, setMediaLoading] = useState(false);
   const [showPdfModal, setShowPdfModal] = useState(false);
   const [productsToExport, setProductsToExport] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailMessage, setEmailMessage] = useState("");
+  const [selectedCustomers, setSelectedCustomers] = useState([]);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [isFiltered, setIsFiltered] = useState(false);
+  const [filteredProductsList, setFilteredProductsList] = useState([]);
+  const [activeFilters, setActiveFilters] = useState(null);
+  const [selectedProductsData, setSelectedProductsData] = useState([]);
+  const [activeTab, setActiveTab] = useState("share");
+
   const [newProduct, setNewProduct] = useState({
     product_name: "",
     description: "",
@@ -57,19 +76,37 @@ const AddProductForm = () => {
     minimum_order_quantity: "",
     available_stock: "",
     vendor_id: "",
-    category_id: "", // Added category_id field
+    category_id: "",
     tags: "",
   });
 
   // pegination functions
-  const filteredProducts = products.filter((product) =>
-    product.product_name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredProducts = isFiltered
+    ? filteredProductsList.filter((product) =>
+        product.product_name.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : products.filter((product) =>
+        product.product_name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
 
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
 
   const paginatedProducts = filteredProducts.slice(startIndex, endIndex);
+
+  const handleApplyFilters = (filteredProducts, appliedFilters) => {
+    if (appliedFilters === null) {
+      // Reset filters
+      setIsFiltered(false);
+      setFilteredProductsList([]);
+      setActiveFilters(null);
+    } else {
+      // Apply filters
+      setFilteredProductsList(filteredProducts);
+      setIsFiltered(true);
+      setActiveFilters(appliedFilters);
+    }
+  };
 
   const handleExportToPdf = () => {
     if (selectedProducts.length === 0) {
@@ -77,12 +114,11 @@ const AddProductForm = () => {
       return;
     }
 
-    // Filter the products to get only the selected ones
-    const selectedProductsData = products.filter((product) =>
-      selectedProducts.includes(product.id)
+    const uniqueProductsToExport = Array.from(
+      new Map(selectedProductsData.map((item) => [item.id, item])).values()
     );
 
-    setProductsToExport(selectedProductsData);
+    setProductsToExport(uniqueProductsToExport);
     setShowPdfModal(true);
   };
 
@@ -107,9 +143,27 @@ const AddProductForm = () => {
         });
 
         if (response?.success && response?.data?.products) {
+          const currentSelectedIds = selectedProducts;
+
           setProducts(response.data.products);
           setTotalPages(response.data.pagination.totalPages);
           setTotalItems(response.data.pagination.totalItems);
+
+          if (currentSelectedIds.length > 0) {
+            response.data.products.forEach((product) => {
+              if (currentSelectedIds.includes(product.id)) {
+                setSelectedProductsData((prevData) => {
+                  const productExists = prevData.some(
+                    (p) => p.id === product.id
+                  );
+                  if (!productExists) {
+                    return [...prevData, product];
+                  }
+                  return prevData;
+                });
+              }
+            });
+          }
         } else {
           toast.error("Failed to fetch products");
         }
@@ -120,7 +174,7 @@ const AddProductForm = () => {
         setLoading(false);
       }
     },
-    [itemsPerPage]
+    [itemsPerPage, selectedProducts]
   );
 
   const fetchVendors = useCallback(async () => {
@@ -133,12 +187,26 @@ const AddProductForm = () => {
       console.error("Error fetching vendors:", error);
     }
   }, []);
+  const fetchCustomers = async () => {
+    try {
+      const response = await getAllcustomerAPI();
+      if (response?.success && response?.data?.customers) {
+        setCustomers(response.data.customers);
+      }
+    } catch (error) {
+      console.error("Error fetching customers:", error);
+      toast.error("Failed to fetch customers");
+    }
+  };
+  useEffect(() => {
+    fetchCustomers();
+  }, []);
 
   const fetchCategories = useCallback(async () => {
     try {
       const response = await getAllcategoriesAPI({
         page: 1,
-        limit: 100, // Get all categories
+        limit: 100,
       });
 
       if (response?.success && response?.data?.categories) {
@@ -201,6 +269,55 @@ const AddProductForm = () => {
     }
   }, [products, allMedia]);
 
+  const handleSendEmail = async () => {
+    if (!selectedCustomers.length) {
+      toast.error("Please select at least one customer");
+      return;
+    }
+
+    if (!emailSubject.trim() || !emailMessage.trim()) {
+      toast.error("Please provide both subject and message");
+      return;
+    }
+
+    setIsSendingEmail(true);
+    try {
+      // Format customers data for email sending
+      const customersToEmail = selectedCustomers.map((customer) => ({
+        name: customer.label.split(" (")[0],
+        email: customer.email,
+      }));
+
+      // Create email data object
+      const emailData = {
+        customers: customersToEmail,
+        subject: emailSubject,
+        message: emailMessage,
+        shareLink: shareLink,
+        productCount: selectedProducts.length,
+      };
+
+      const response = await sendEmailToCustomersAPI(emailData);
+
+      if (response.success) {
+        toast.success("Emails sent successfully!");
+        setShowShareLinkModal(false);
+        setSelectedCustomers([]);
+        setEmailSubject("");
+        setEmailMessage("");
+      } else {
+        toast.error(response.message || "Failed to send emails");
+      }
+    } catch (error) {
+      console.error("Error sending emails:", error);
+      toast.error(
+        "Error sending emails: " + (error.message || "Unknown error")
+      );
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
+
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= totalPages) {
       setCurrentPage(newPage);
@@ -251,7 +368,6 @@ const AddProductForm = () => {
           : [],
       };
 
-      // Use processedData instead of newProduct
       const response = await addProductAPI(processedData);
 
       if (response.success) {
@@ -315,6 +431,7 @@ const AddProductForm = () => {
       available_stock: product.available_stock,
       vendor_id: product.vendor_id,
       category_id: product.category_id || "",
+      tags: product.tags.join(", "),
     });
     handleShowModal();
   };
@@ -352,28 +469,6 @@ const AddProductForm = () => {
     }
   };
 
-  // const handleDeleteProduct = async (productId) => {
-  //   if (!productId) {
-  //     toast.error("Product ID is required");
-  //     return;
-  //   }
-
-  //   try {
-  //     if (window.confirm("Are you sure you want to delete this product?")) {
-  //       const response = await deleteProductAPI(productId);
-  //       if (response.success) {
-  //         toast.success("Product deleted successfully");
-  //         fetchProducts(currentPage);
-  //       } else {
-  //         toast.error(response.message || "Failed to delete product");
-  //       }
-  //     }
-  //   } catch (error) {
-  //     toast.error(error.response?.data?.message || "Error deleting product");
-  //     console.error("Error deleting product:", error);
-  //   }
-  // };
-
   const showDeleteConfirmation = (product) => {
     setProductToDelete(product.id);
     setProductToDeleteName(product.product_name);
@@ -407,52 +502,45 @@ const AddProductForm = () => {
     setSelectMode(!selectMode);
     if (selectMode) {
       setSelectedProducts([]);
+      setSelectedProductsData([]); // Clear the selected products data too
     }
   };
 
   const handleProductSelection = (productId) => {
     setSelectedProducts((prev) => {
       if (prev.includes(productId)) {
-        return prev.filter((id) => id !== productId);
+        // Remove from selected IDs
+        const newSelectedIds = prev.filter((id) => id !== productId);
+
+        // Also remove from selected products data
+        setSelectedProductsData((prevData) =>
+          prevData.filter((product) => product.id !== productId)
+        );
+
+        return newSelectedIds;
       } else {
-        return [...prev, productId];
-      }
-    });
-  };
+        // Add to selected IDs
+        const newSelectedIds = [...prev, productId];
 
-  const handleShareProduct = async (productId) => {
-    try {
-      setIsSharing(true);
-      toast.info("Generating share link...");
-
-      const response = await addsharedcollectionAPI({
-        product_ids: [productId],
-      });
-
-      if (response && response.success) {
-        const slug = response.data.slug;
-
-        if (!slug) {
-          throw new Error("No slug received from server");
+        // Check if product already exists in selectedProductsData to avoid duplicates
+        const productToAdd = products.find((p) => p.id === productId);
+        if (productToAdd) {
+          setSelectedProductsData((prevData) => {
+            // Check if this product is already in the array
+            const productExists = prevData.some((p) => p.id === productId);
+            if (productExists) {
+              // If it exists, don't add it again
+              return prevData;
+            } else {
+              // If it doesn't exist, add it
+              return [...prevData, productToAdd];
+            }
+          });
         }
 
-        const shareableLink = `${window.location.origin}/shared-products/${slug}`;
-
-        setShareLink(shareableLink);
-        setSharedCollectionId(slug);
-        setShowShareLinkModal(true);
-        toast.success("Share link generated successfully");
-      } else {
-        toast.error(response?.message || "Failed to generate share link");
+        return newSelectedIds;
       }
-    } catch (error) {
-      console.error("Error sharing product:", error);
-      toast.error(
-        "Error generating share link: " + (error.message || "Unknown error")
-      );
-    } finally {
-      setIsSharing(false);
-    }
+    });
   };
 
   const handleShareMultipleProducts = async () => {
@@ -460,6 +548,12 @@ const AddProductForm = () => {
       toast.error("Please select at least one product to share");
       return;
     }
+
+    // Set products to export for PDF tab
+    const uniqueProductsToExport = Array.from(
+      new Map(selectedProductsData.map((item) => [item.id, item])).values()
+    );
+    setProductsToExport(uniqueProductsToExport);
 
     try {
       setIsSharing(true);
@@ -494,6 +588,8 @@ const AddProductForm = () => {
       setIsSharing(false);
     }
   };
+
+  // Create a new combined modal in the JSX
 
   const copyShareLink = () => {
     navigator.clipboard
@@ -531,49 +627,102 @@ const AddProductForm = () => {
   return (
     <div className="container bg-white">
       <h2 className="my-4">Product Management</h2>
-      <div className="d-flex justify-content-between mb-3">
-        <div className="d-flex align-items-center position-relative w-50">
-          <Form.Control
-            type="text"
-            placeholder="Search by Product name"
-            className="w-100 pe-5"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          <FaSearch className="position-absolute end-0 me-3" />
-        </div>
-        <Button
-          variant={selectMode ? "success" : "secondary"}
-          onClick={toggleSelectMode}
-          className="me-2"
-        >
-          {selectMode ? "Cancel Selection" : "Select Products"}
-        </Button>
-        {selectMode && (
-          <>
-            <Button
-              variant="info"
-              onClick={handleShareMultipleProducts}
-              disabled={selectedProducts.length === 0 || isSharing}
-              className="me-2"
-            >
-              <FaLink /> Share Selected ({selectedProducts.length})
-            </Button>
+      <div className="d-flex flex-column mb-3">
+        {/* Top row with search and buttons */}
+        <div className="d-flex flex-wrap justify-content-between align-items-center mb-2">
+          <div
+            className="d-flex align-items-center position-relative mb-2 mb-md-0"
+            style={{ width: "300px" }}
+          >
+            <div className="position-relative w-100">
+              <Form.Control
+                type="text"
+                placeholder="Search Product name"
+                className="w-100 pe-5"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              <FaSearch
+                className="position-absolute end-0 me-3"
+                style={{ top: "50%", transform: "translateY(-50%)" }}
+              />
+            </div>
+          </div>
+
+          <div className="d-flex flex-wrap gap-2">
+            <ProductFilter
+              products={products}
+              categories={categories}
+              onApplyFilters={handleApplyFilters}
+              isFiltered={isFiltered}
+              filteredCount={filteredProductsList.length}
+              className="btn-fixed-width"
+            />
 
             <Button
               variant="danger"
-              onClick={handleExportToPdf}
-              disabled={selectedProducts.length === 0}
-              className="me-2"
+              onClick={handleShareMultipleProducts}
+              disabled={selectedProducts.length === 0 || isSharing}
+              className="btn-fixed-width"
             >
-              <FaFilePdf /> Export to PDF ({selectedProducts.length})
+              <FaLink /> Share & Export ({selectedProducts.length})
             </Button>
-          </>
+
+            <Button
+              variant="primary"
+              onClick={handleShowModal}
+              className="btn-fixed-width"
+            >
+              <FaPlus /> Add Product
+            </Button>
+          </div>
+        </div>
+
+        {/* Second row for active filters */}
+        {isFiltered && (
+          <div className="active-filters-container p-2 bg-light rounded mt-2">
+            <div className="d-flex justify-content-between align-items-center flex-wrap">
+              <div className="d-flex flex-wrap align-items-center">
+                <strong className="me-2">Active Filters:</strong>
+                {activeFilters?.category_id && (
+                  <span className="badge bg-info me-2 mb-1">
+                    Category:{" "}
+                    {
+                      categories.find((c) => c.id == activeFilters.category_id)
+                        ?.category_name
+                    }
+                  </span>
+                )}
+                {activeFilters?.minPrice && (
+                  <span className="badge bg-info me-2 mb-1">
+                    Min Price: {activeFilters.minPrice}
+                  </span>
+                )}
+                {activeFilters?.maxPrice && (
+                  <span className="badge bg-info me-2 mb-1">
+                    Max Price: {activeFilters.maxPrice}
+                  </span>
+                )}
+                {activeFilters?.tags &&
+                  activeFilters.tags.map((tag) => (
+                    <span key={tag} className="badge bg-info me-2 mb-1">
+                      Tag: {tag}
+                    </span>
+                  ))}
+              </div>
+              <Button
+                variant="outline-secondary"
+                size="sm"
+                onClick={() => handleApplyFilters([], null)}
+                className="mt-1 mt-md-0"
+              >
+                Clear Filters
+              </Button>
+            </div>
+          </div>
         )}
-        <Button variant="primary" onClick={handleShowModal}>
-          <FaPlus /> Add Product
-        </Button>
       </div>
+
       <Table bordered hover responsive>
         <thead>
           <tr>
@@ -647,7 +796,7 @@ const AddProductForm = () => {
                 <td>{product.category?.category_name || "No Category"}</td>
 
                 <td>{product.price}</td>
-                <td>{product.gst_percentage}%</td>
+                <td>{product.gst_percentage}</td>
                 <td>{product.minimum_order_quantity}</td>
                 <td>{product.available_stock}</td>
                 <td className="text-center">
@@ -672,27 +821,22 @@ const AddProductForm = () => {
 
                 <td>{product.vendor?.name || "No vendor"}</td>
                 <td>
-                  <Button
-                    variant="warning"
-                    className="me-2"
-                    onClick={() => handleEditProduct(product)}
-                  >
-                    <FaEdit />
-                  </Button>
-                  <Button
-                    variant="danger"
-                    className="me-2"
-                    onClick={() => showDeleteConfirmation(product)}
-                  >
-                    <FaTrash />
-                  </Button>
-                  {/* <Button
-                    variant="info"
-                    className="me-2"
-                    onClick={() => handleShareProduct(product.id)}
-                  >
-                    <FaShare />
-                  </Button> */}
+                  <div className="d-flex">
+                    <Button
+                      variant="warning"
+                      className="me-2"
+                      onClick={() => handleEditProduct(product)}
+                    >
+                      <FaEdit />
+                    </Button>
+                    <Button
+                      variant="danger"
+                      className="me-2"
+                      onClick={() => showDeleteConfirmation(product)}
+                    >
+                      <FaTrash />
+                    </Button>
+                  </div>
                 </td>
               </tr>
             ))
@@ -837,7 +981,7 @@ const AddProductForm = () => {
                 ))}
               </Form.Select>
             </Form.Group>
-            {/* Add this after the Vendor Form.Group */}
+
             <Form.Group className="mb-3">
               <Form.Label>Tags</Form.Label>
               <Form.Control
@@ -905,52 +1049,153 @@ const AddProductForm = () => {
 
       <Modal
         show={showShareLinkModal}
-        onHide={() => setShowShareLinkModal(false)}
-        centered
-      >
-        <Modal.Header closeButton>
-          <Modal.Title>Share Products</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <p>Share this link with others to view the selected products:</p>
-          <div className="input-group mb-3">
-            <Form.Control type="text" value={shareLink} readOnly />
-            <Button variant="outline-secondary" onClick={copyShareLink}>
-              <FaCopy /> Copy
-            </Button>
-          </div>
-          <Button variant="primary" onClick={viewSharedProducts}>
-            View Shared Products
-          </Button>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button
-            variant="secondary"
-            onClick={() => setShowShareLinkModal(false)}
-          >
-            Close
-          </Button>
-        </Modal.Footer>
-      </Modal>
-      {/* Add this new modal for PDF export */}
-      <Modal
-        show={showPdfModal}
-        onHide={handleClosePdfModal}
+        onHide={() => {
+          setShowShareLinkModal(false);
+          setActiveTab("share");
+        }}
         centered
         size="lg"
       >
         <Modal.Header closeButton>
-          <Modal.Title>Export Products to PDF</Modal.Title>
+          <Modal.Title>
+            Share & Export Products ({selectedProducts.length})
+          </Modal.Title>
         </Modal.Header>
+
         <Modal.Body>
-          <ExportProductsPDF
-            products={productsToExport}
-            vendors={vendors}
-            categories={categories}
-            onClose={handleClosePdfModal}
-          />
+          {/* Custom styled tabs */}
+          <div className="custom-tabs-container mb-4">
+            <div className="custom-tabs">
+              <button
+                className={`custom-tab ${
+                  activeTab === "share" ? "active" : ""
+                }`}
+                onClick={() => setActiveTab("share")}
+              >
+                <FaLink className="tab-icon" />
+                <span>Share Products Link</span>
+              </button>
+              <button
+                className={`custom-tab ${activeTab === "pdf" ? "active" : ""}`}
+                onClick={() => setActiveTab("pdf")}
+              >
+                <FaFilePdf className="tab-icon" />
+                <span>Export to PDF</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Tab Content */}
+          <div className="tab-content mt-4">
+            {/* Share Tab */}
+            <div
+              className={`tab-pane fade ${
+                activeTab === "share" ? "show active" : ""
+              }`}
+            >
+              <div className="mb-4">
+                <h5>Share Link</h5>
+                <div className="input-group mb-3">
+                  <Form.Control type="text" value={shareLink} readOnly />
+                  <Button variant="outline-secondary" onClick={copyShareLink}>
+                    <FaCopy /> Copy
+                  </Button>
+                </div>
+                <Button
+                  variant="outline-primary"
+                  onClick={viewSharedProducts}
+                  className="mb-3 w-100"
+                >
+                  <FaLink className="me-2" />
+                  Preview Shared Products
+                </Button>
+              </div>
+
+              <hr />
+
+              <div className="mt-1">
+                <h4 className="text-center">Share Email</h4>
+                <Form>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Select Customers</Form.Label>
+                    <Select
+                      isMulti
+                      options={customers.map((customer) => ({
+                        value: customer.id,
+                        label: `${customer.name} (${customer.email})`,
+                        email: customer.email,
+                        name: customer.name,
+                      }))}
+                      onChange={(selected) =>
+                        setSelectedCustomers(selected || [])
+                      }
+                      placeholder="Select customers to share with..."
+                    />
+                  </Form.Group>
+
+                  <Form.Group className="mb-3">
+                    <Form.Label>Email Subject</Form.Label>
+                    <Form.Control
+                      type="text"
+                      placeholder="Enter email subject"
+                      value={emailSubject}
+                      onChange={(e) => setEmailSubject(e.target.value)}
+                    />
+                  </Form.Group>
+
+                  <Form.Group className="mb-3">
+                    <Form.Label>Email Message</Form.Label>
+                    <Form.Control
+                      as="textarea"
+                      rows={3}
+                      placeholder="Enter your message"
+                      value={emailMessage}
+                      onChange={(e) => setEmailMessage(e.target.value)}
+                    />
+                  </Form.Group>
+
+                  <Button
+                    variant="primary"
+                    onClick={handleSendEmail}
+                    disabled={isSendingEmail || !selectedCustomers.length}
+                    className="w-100"
+                  >
+                    {isSendingEmail ? (
+                      <>
+                        <Spinner size="sm" className="me-2" />
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <FaShare className="me-2" />
+                        Send Email to Selected Customers
+                      </>
+                    )}
+                  </Button>
+                </Form>
+              </div>
+            </div>
+
+            {/* PDF Export Tab */}
+            <div
+              className={`tab-pane fade ${
+                activeTab === "pdf" ? "show active" : ""
+              }`}
+            >
+              <h5 className="mb-3">Export Products to PDF</h5>
+              <div className="pdf-export-container">
+                <ExportProductsPDF
+                  products={productsToExport}
+                  vendors={vendors}
+                  categories={categories}
+                  onClose={() => {}}
+                />
+              </div>
+            </div>
+          </div>
         </Modal.Body>
       </Modal>
+
       <div className="d-flex justify-content-between align-items-center mt-3 mb-4">
         <div className="text-muted">
           Showing{" "}

@@ -1,0 +1,16 @@
+.btn-fixed-width {
+    min-width: 140px;
+    white-space: nowrap;
+  }
+  
+  .active-filters-container {
+    background-color: #f8f9fa;
+    border-radius: 6px;
+    border: 1px solid #e9ecef;
+  }
+  
+  .active-filters-container .badge {
+    font-size: 0.85rem;
+    padding: 0.4rem 0.6rem;
+  }
+  

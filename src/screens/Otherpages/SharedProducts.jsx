@@ -106,7 +106,7 @@ const SharedProducts = () => {
     fetchSharedProducts();
   }, [id, location]);
 
-  const nextImage = (productId) => {
+  const nextImage = (productId, e) => {
     e.stopPropagation();
     setCurrentImageIndices((prev) => {
       const product = products.find((p) => p.id === productId);
@@ -124,7 +124,7 @@ const SharedProducts = () => {
   };
 
   // Function to navigate to the previous image
-  const prevImage = (productId) => {
+  const prevImage = (productId, e) => {
     e.stopPropagation();
     setCurrentImageIndices((prev) => {
       const product = products.find((p) => p.id === productId);
@@ -226,8 +226,8 @@ const SharedProducts = () => {
                       className="position-absolute top-50 start-0 translate-middle-y rounded-circle p-1"
                       style={{ opacity: 0.7 }}
                       onClick={(e) => {
-                        e.preventDefault();
-                        prevImage(product.id);
+                        e.stopPropagation(); // Stop event propagation here as well
+                        prevImage(product.id, e);
                       }}
                     >
                       <FaChevronLeft />
@@ -237,8 +237,8 @@ const SharedProducts = () => {
                       className="position-absolute top-50 end-0 translate-middle-y rounded-circle p-1"
                       style={{ opacity: 0.7 }}
                       onClick={(e) => {
-                        e.preventDefault();
-                        nextImage(product.id);
+                        e.stopPropagation(); // Stop event propagation here as well
+                        nextImage(product.id, e);
                       }}
                     >
                       <FaChevronRight />

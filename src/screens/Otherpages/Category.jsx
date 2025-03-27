@@ -3,6 +3,8 @@ import { Table, Form, Button, Modal } from "react-bootstrap";
 import { FaSearch, FaPlus, FaEdit, FaTrash } from "react-icons/fa";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import Swal from "sweetalert2";
+
 import {
   addCategoryAPI,
   getAllcategoriesAPI,
@@ -113,25 +115,44 @@ const Category = () => {
     setShowModal(true);
   };
 
-  const handleDeleteCategory = async (categoryId) => {
-    if (window.confirm("Are you sure you want to delete this category?")) {
-      try {
-        const response = await deleteCategoryAPI(categoryId);
-        if (response.success) {
-          toast.success("Category deleted successfully");
-          fetchCategories();
-        } else {
-          toast.error(response.message || "Failed to delete category");
+  const handleDeleteCategory = async (categoryId, categoryName) => {
+    Swal.fire({
+      title: "Are you sure?",
+      text: `Do you want to delete the category "${categoryName}"?`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Yes, delete it!",
+      cancelButtonText: "Cancel",
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        try {
+          const response = await deleteCategoryAPI(categoryId);
+          if (response.success) {
+            Swal.fire(
+              "Deleted!",
+              "Category has been deleted successfully.",
+              "success"
+            );
+            fetchCategories();
+          } else {
+            Swal.fire(
+              "Error!",
+              response.message || "Failed to delete category",
+              "error"
+            );
+          }
+        } catch (error) {
+          Swal.fire("Error!", "Error deleting category", "error");
         }
-      } catch (error) {
-        toast.error("Error deleting category");
       }
-    }
+    });
   };
 
   const handleSearch = (e) => {
     setSearchQuery(e.target.value);
-    setCurrentPage(1); // Reset to first page when searching
+    setCurrentPage(1);
   };
 
   return (
@@ -163,7 +184,7 @@ const Category = () => {
             <th>#</th>
             <th>Category Name</th>
             <th>Status</th>
-            <th>Created At</th>
+            {/* <th>Created At</th> */}
             <th>Actions</th>
           </tr>
         </thead>
@@ -171,7 +192,7 @@ const Category = () => {
           {categories.length > 0 ? (
             categories.map((category, index) => (
               <tr key={category.id || index}>
-                <td>{index + 1}</td>
+                <td>{category.id}</td>
                 <td>{category.category_name}</td>
                 <td>
                   <span
@@ -182,7 +203,7 @@ const Category = () => {
                     {category.is_active ? "Active" : "Inactive"}
                   </span>
                 </td>
-                <td>{new Date(category.createdAt).toLocaleDateString()}</td>
+                {/* <td>{new Date(category.createdAt).toLocaleDateString()}</td> */}
                 <td>
                   <Button
                     variant="info"
@@ -195,7 +216,9 @@ const Category = () => {
                   <Button
                     variant="danger"
                     size="sm"
-                    onClick={() => handleDeleteCategory(category.id)}
+                    onClick={() =>
+                      handleDeleteCategory(category.id, category.category_name)
+                    }
                   >
                     <FaTrash />
                   </Button>

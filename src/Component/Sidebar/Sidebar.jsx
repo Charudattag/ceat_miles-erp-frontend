@@ -111,11 +111,11 @@ const Sidebar = () => {
             path: "/bulkProductImport",
             icon: LiaImageSolid,
           },
-          // {
-          //   label: "Banner",
-          //   path: "/All-Banners",
-          //   icon: IoImagesOutline,
-          // },
+          {
+            label: "Customer",
+            path: "/customer",
+            icon: FaUsers,
+          },
           // {
           //   label: "PurchaseOrder",
           //   path: "/purchaseOrder",

@@ -63,6 +63,7 @@ const BulkProductImport = ({ fetchProducts, currentPage }) => {
       "gst_percentage",
       "minimum_order_quantity",
       "available_stock",
+      "category_id",
     ];
     const invalidProducts = products.filter((product) =>
       requiredFields.some((field) => !product[field] && product[field] !== 0)
@@ -87,6 +88,7 @@ const BulkProductImport = ({ fetchProducts, currentPage }) => {
 
     try {
       const reader = new FileReader();
+
       reader.onload = async (e) => {
         try {
           const data = new Uint8Array(e.target.result);
@@ -95,6 +97,8 @@ const BulkProductImport = ({ fetchProducts, currentPage }) => {
           const worksheet = workbook.Sheets[sheetName];
           const products = XLSX.utils.sheet_to_json(worksheet);
 
+          console.log("Total products to import:", products.length);
+
           const validation = validateProducts(products);
           if (!validation.valid) {
             toast.error(validation.message);
@@ -102,17 +106,40 @@ const BulkProductImport = ({ fetchProducts, currentPage }) => {
             return;
           }
 
-          const batchSize = 20;
+          const batchSize = 5;
           let successCount = 0;
           let errorCount = 0;
+          let processedCount = 0;
 
           for (let i = 0; i < products.length; i += batchSize) {
-            const batch = products.slice(i, i + batchSize);
+            const batch = products.slice(
+              i,
+              Math.min(i + batchSize, products.length)
+            );
+            console.log(
+              `Processing batch ${i / batchSize + 1}, size: ${batch.length}`
+            );
+
             for (const product of batch) {
               try {
+                if (product.tags && typeof product.tags === "string") {
+                  product.tags = product.tags
+                    .split(",")
+                    .map((tag) => tag.trim());
+                }
+
+                console.log(
+                  `Sending API request for product: ${product.product_name}`
+                );
+
                 const response = await addProductAPI(product);
+                processedCount++;
+
                 if (response.success) {
                   successCount++;
+                  console.log(
+                    `Successfully added product: ${product.product_name}`
+                  );
                 } else {
                   errorCount++;
                   console.error(
@@ -122,24 +149,35 @@ const BulkProductImport = ({ fetchProducts, currentPage }) => {
                   );
                 }
               } catch (error) {
+                processedCount++;
                 errorCount++;
-                console.error("Error adding product:", error.message || error);
+                console.error(
+                  "Error adding product:",
+                  product.product_name,
+                  error.message || error
+                );
               }
+
+              const currentProgress = Math.min(
+                Math.round((processedCount / products.length) * 100),
+                100
+              );
+              setProgress(currentProgress);
             }
-            const currentProgress = Math.min(
-              Math.round(((i + batch.length) / products.length) * 100),
-              100
-            );
-            setProgress(currentProgress);
-            toast.info(
-              `Processed ${Math.min(i + batch.length, products.length)} of ${
-                products.length
-              } products...`
-            );
+
+            if (i + batchSize < products.length) {
+              toast.info(
+                `Processed ${processedCount} of ${products.length} products...`
+              );
+              await new Promise((resolve) => setTimeout(resolve, 1000));
+            }
           }
 
+          console.log(
+            `Import completed. Success: ${successCount}, Errors: ${errorCount}`
+          );
+
           if (successCount > 0) {
-            // Show SweetAlert2 for successful import
             Swal.fire({
               title: "Success!",
               text: `Successfully imported ${successCount} products`,
@@ -157,25 +195,38 @@ const BulkProductImport = ({ fetchProducts, currentPage }) => {
               fetchProducts(currentPage);
             }
           }
+
           if (errorCount > 0) {
             toast.error(
               `Failed to import ${errorCount} products. Check console for details.`
             );
           }
         } catch (error) {
-          toast.error("Error processing Excel file");
           console.error("Excel processing error:", error);
+          toast.error(
+            "Error processing Excel file: " + (error.message || "Unknown error")
+          );
+        } finally {
+          setImporting(false);
+          setShowPreview(false);
+          setFile(null);
+          setProgress(0);
+          document.getElementById("excel-upload").value = "";
         }
-        setImporting(false);
-        setShowPreview(false);
-        setFile(null);
-        setProgress(0);
-        document.getElementById("excel-upload").value = "";
       };
+
+      reader.onerror = (error) => {
+        console.error("FileReader error:", error);
+        toast.error("Error reading file");
+        setImporting(false);
+      };
+
       reader.readAsArrayBuffer(file);
     } catch (error) {
-      toast.error("Error processing file");
       console.error("File processing error:", error);
+      toast.error(
+        "Error processing file: " + (error.message || "Unknown error")
+      );
       setImporting(false);
     }
   };
@@ -189,7 +240,9 @@ const BulkProductImport = ({ fetchProducts, currentPage }) => {
         gst_percentage: "18",
         minimum_order_quantity: "10",
         available_stock: "100",
+        category_id: "1",
         vendor_id: "2",
+        tags: "tag1, tag2, tag3",
       },
     ];
     const worksheet = XLSX.utils.json_to_sheet(template);
@@ -218,7 +271,6 @@ const BulkProductImport = ({ fetchProducts, currentPage }) => {
 
         <Card.Body className="p-4">
           <div className="import-steps">
-            {/* Step 1 */}
             <div className="step-container mb-5">
               <div className="step-header d-flex align-items-center mb-3">
                 <div className="step-number">
@@ -248,7 +300,6 @@ const BulkProductImport = ({ fetchProducts, currentPage }) => {
               </div>
             </div>
 
-            {/* Step 2 */}
             <div className="step-container mb-5">
               <div className="step-header d-flex align-items-center mb-3">
                 <div className="step-number">
@@ -316,7 +367,6 @@ const BulkProductImport = ({ fetchProducts, currentPage }) => {
               </div>
             </div>
 
-            {/* Preview Section */}
             {showPreview && previewData.length > 0 && (
               <div className="preview-container mb-5">
                 <div className="d-flex align-items-center mb-3">
@@ -354,7 +404,6 @@ const BulkProductImport = ({ fetchProducts, currentPage }) => {
               </div>
             )}
 
-            {/* Step 3 */}
             <div className="step-container">
               <div className="step-header d-flex align-items-center mb-3">
                 <div className="step-number">

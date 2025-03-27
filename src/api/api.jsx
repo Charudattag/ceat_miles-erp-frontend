@@ -167,6 +167,29 @@ export const deleteCategoryAPI = (id) =>
 export const getAllcategoriesAPI = (payload) =>
   apiRequest("/category/getAllCategories", payload, "get");
 
+// Customer APIS
+export const addCustomerAPI = (userData) =>
+  apiRequest(`/customer/createCustomer`, userData, "post");
+
+export const getAllcustomerAPI = ({ page = 1, limit = 10 } = {}) =>
+  apiRequest(
+    `/customer/getAllCustomers?page=${page}&limit=${limit}`,
+    null,
+    "get"
+  );
+
+export const updateCustomerAPI = ({ id, userData }) =>
+  apiRequest(`/customer/updateCustomer/${id}`, userData, "post");
+
+export const sendEmailToCustomersAPI = (payload) =>
+  apiRequest(`/customer/sendEmailToCustomers`, payload, "post");
+
+export const sendEmailTopdfcustomerAPI = (payload) =>
+  apiRequest(`/customer/sendPdfEmail`, payload, "post");
+
+export const deleteCustomerAPI = (id) =>
+  apiRequest(`/customer/deleteCustomer/${id}`, null, "post");
+
 // po order apis
 
 export const addpurchaseorderAPI = (userData) =>

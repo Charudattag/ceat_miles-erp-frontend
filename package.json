@@ -9,12 +9,15 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@lottiefiles/dotlottie-react": "^0.13.2",
     "@react-pdf/renderer": "^4.3.0",
     "@tanstack/react-query": "^5.62.14",
     "antd": "^5.23.3",
     "axios": "^1.7.9",
     "bootstrap": "^5.3.3",
+    "chart.js": "^4.4.8",
     "date-fns": "^4.1.0",
+    "express-fileupload": "^1.5.1",
     "font-awesome": "^4.7.0",
     "install": "^0.13.0",
     "jquery": "^3.7.1",
@@ -27,6 +30,7 @@
     "quill": "^2.0.2",
     "react": "^18.3.1",
     "react-bootstrap": "^2.10.9",
+    "react-chartjs-2": "^5.3.0",
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.54.2",
     "react-icons": "^5.5.0",
